@@ -1,0 +1,19 @@
+/target
+.env
+# Compiler files
+cache/
+out/
+# Ignores development broadcast logs
+!/broadcast
+/broadcast/*
+/broadcast/*/31337/
+
+
+# Added by cargo
+
+/lib/*
+/target
+.env
+.vscode/*.log
+.env*
+!.env.example

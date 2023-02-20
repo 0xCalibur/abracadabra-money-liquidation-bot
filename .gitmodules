@@ -1,0 +1,12 @@
+[submodule "lib/abracadabra-money-foundry"]
+	path = lib/abracadabra-money-foundry
+	url = https://github.com/Abracadabra-money/abracadabra-money-foundry
+[submodule "lib/v3-core.git"]
+	path = lib/v3-core.git
+	url = https://github.com/Uniswap/v3-core.git
+[submodule "lib/v3-core"]
+	path = lib/v3-core
+	url = https://github.com/Uniswap/v3-core
+[submodule "lib/v3-periphery"]
+	path = lib/v3-periphery
+	url = https://github.com/Uniswap/v3-periphery

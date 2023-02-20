@@ -1,0 +1,28 @@
+[profile.default]
+src = 'contracts'
+out = 'target'
+test = 'test'
+libs = ['lib']
+solc_version = "0.8.16"
+verbosity = 1
+via_ir = false
+remappings = [
+    '/=contracts',
+    "OpenZeppelin/=lib/abracadabra-money-foundry/lib/openzeppelin-contracts/contracts",
+    "BoringSolidity/=lib/abracadabra-money-foundry/lib/BoringSolidity/contracts",
+    "ds-test/=lib/abracadabra-money-foundry/lib/forge-std/lib/ds-test/src/",
+    "forge-std/=lib/abracadabra-money-foundry/lib/forge-std/src/",
+    'utils/=lib/abracadabra-money-foundry/utils',
+    'libraries/=lib/abracadabra-money-foundry/src/libraries',
+    'interfaces/=lib/abracadabra-money-foundry/src/interfaces',
+    'cauldrons/=lib/abracadabra-money-foundry/src/cauldrons',
+    'swappers/=lib/abracadabra-money-foundry/src/swappers',
+    'oracles/=lib/abracadabra-money-foundry/src/oracles',
+    'strategies/=lib/abracadabra-money-foundry/src/strategies',
+    'tokens/=lib/abracadabra-money-foundry/rc/tokens',
+    'harvesters/=lib/abracadabra-money-foundry/src/harvesters',
+    'periphery/=lib/abracadabra-money-foundry/src/periphery',
+    '@uniswap/v3-core/=lib/v3-core',
+    '@uniswap/v3-periphery/=lib/v3-periphery',
+]
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config

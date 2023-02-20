@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "tamasfe.even-better-toml",
+    "irongeek.vscode-env",
+    "ms-vscode.makefile-tools",
+    "juanblanco.solidity",
+    "rust-lang.rust-analyzer"
+  ]
+}
