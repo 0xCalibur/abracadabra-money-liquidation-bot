@@ -34,9 +34,6 @@ use bindings::{
 type ClientTypeWs = NonceManagerMiddleware<
     SignerMiddleware<GasEscalatorMiddleware<Provider<Ws>, GeometricGasPrice>, Wallet<SigningKey>>,
 >;
-type ClientTypeHttp = NonceManagerMiddleware<
-    SignerMiddleware<GasEscalatorMiddleware<Provider<Http>, GeometricGasPrice>, Wallet<SigningKey>>,
->;
 
 #[derive(Debug)]
 enum Event {
@@ -46,7 +43,7 @@ enum Event {
 }
 
 #[derive(Debug, Clone)]
-struct Parameters<M, N> {
+struct Parameters<M> {
     collaterization_rate: U256,
     collateral_decimals: U256,
     liquidation_multiplier: U256,
@@ -54,7 +51,6 @@ struct Parameters<M, N> {
     users: Vec<Address>,
     collateral: ERC20<M>,
     cauldron: CauldronV2<M>,
-    cauldron_send: CauldronV2<N>,
     bentobox: BentoBoxV1<M>,
     cauldron_liquidator: CauldronLiquidator<M>,
     cauldron_address: Address,
@@ -95,17 +91,21 @@ async fn stream_borrows(
     Ok(())
 }
 
-async fn create_client(
-    pk: &String,
-    rpc: &String,
-) -> anyhow::Result<Arc<ClientTypeWs>, anyhow::Error> {
+struct ClientConfig {
+    rpc: String,
+    private_key: String
+}
+
+async fn create_client(client_config: &ClientConfig) -> anyhow::Result<Arc<ClientTypeWs>, anyhow::Error> {
+    let ClientConfig { rpc, private_key } = client_config;
     let provider = Provider::new(Ws::connect(rpc).await?);
     let chain_id = provider.get_chainid().await?;
 
+    loggy::info!("Connecting to {rpc}...");
     loggy::info!("Chain Id is {}", chain_id);
 
     // Sign transactions with a private key
-    let signer = pk.parse::<LocalWallet>()?.with_chain_id(chain_id.as_u64());
+    let signer = private_key.parse::<LocalWallet>()?.with_chain_id(chain_id.as_u64());
     let address = signer.address();
 
     // Escalate gas prices
@@ -121,61 +121,29 @@ async fn create_client(
     return Ok(client)
 }
 
-async fn create_client_send(
-    pk: &String,
-    rpc: &String,
-) -> anyhow::Result<Arc<ClientTypeHttp>, anyhow::Error> {
-    let provider = Provider::<Http>::try_from(rpc)?;
-
-    let chain_id = provider.get_chainid().await?;
-
-    // Sign transactions with a private key
-    let signer = pk.parse::<LocalWallet>()?.with_chain_id(chain_id.as_u64());
-    let address = signer.address();
-
-    // Escalate gas prices
-    let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
-    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
-
-    let provider = SignerMiddleware::new(provider, signer);
-
-    // Manage nonces locally
-    let provider = NonceManagerMiddleware::new(provider, address);
-    let client = Arc::new(provider);
-
-    return Ok(client)
-}
-
-async fn create_clients() -> anyhow::Result<(Arc<ClientTypeWs>, Arc<ClientTypeHttp>), anyhow::Error>
+fn get_client_config() -> anyhow::Result<ClientConfig>
 {
-    let pk: String;
     let use_anvil = env::var("USE_ANVIL").unwrap_or_default();
-    let rpc: String;
-    let rpc_send: String;
 
-    if use_anvil == "1" {
+    let client_config = if use_anvil == "1" {
         loggy::info!(">> Using Anvil");
-        rpc = "ws://127.0.0.1:8545".to_string();
-        rpc_send = rpc.clone();
-        pk = env::var("LOCAL_PRIVATE_KEY").expect("LOCAL_PRIVATE_KEY not found");
+        ClientConfig {
+            rpc: "ws://127.0.0.1:8545".to_string(),
+            private_key: env::var("LOCAL_PRIVATE_KEY").or(Err(anyhow!("LOCAL_PRIVATE_KEY not found")))?
+        }
     } else {
-        rpc = env::var("RPC_URL").expect("RPC_URL not found");
-        rpc_send = env::var("RPC_URL_SEND").expect("RPC_URL_SEND not found");
-        pk = env::var("PRIVATE_KEY").expect("PRIVATE_KEY not found");
-    }
+        ClientConfig {
+            rpc: env::var("RPC_URL").or(Err(anyhow!("RPC_URL not found")))?,
+            private_key: env::var("PRIVATE_KEY").or(Err(anyhow!("PRIVATE_KEY not found")))?
+        }
+    };
 
-    loggy::info!("Connecting to {rpc}...");
-
-    let client_read = create_client(&pk, &rpc).await.unwrap();
-    let client_send = create_client_send(&pk, &rpc_send).await.unwrap();
-
-    return Ok((client_read, client_send))
+    return Ok(client_config)
 }
 
 async fn initialize(
     client: &Arc<ClientTypeWs>,
-    client_send: &Arc<ClientTypeHttp>,
-) -> anyhow::Result<Parameters<ClientTypeWs, ClientTypeHttp>, anyhow::Error> {
+) -> anyhow::Result<Parameters<ClientTypeWs>, anyhow::Error> {
     let cauldron_liquidation_address = env::var("CAULDRON_LIQUIDATOR")
         .expect("CAULDRON_LIQUIDATOR not found")
         .parse::<Address>()
@@ -199,7 +167,6 @@ async fn initialize(
     loggy::info!("Ratio Increment Bips: {}", ratio_increment_in_bips);
 
     let cauldron = CauldronV2::new(cauldron_address, client.clone());
-    let cauldron_send = CauldronV2::new(cauldron_address, client_send.clone());
     let bentobox = BentoBoxV1::new(cauldron.bento_box().call().await.unwrap(), client.clone());
     let last_block = client.get_block(BlockNumber::Latest).await?.unwrap().number.unwrap();
 
@@ -241,7 +208,6 @@ async fn initialize(
         oracle_data: cauldron.oracle_data().call().await.unwrap(),
         users,
         cauldron,
-        cauldron_send,
         bentobox,
         collateral,
         cauldron_address,
@@ -308,7 +274,7 @@ fn adjust_max_borrow(
 
 async fn check_liquidations(
     sender: mpsc::Sender<Event>,
-    params: &Parameters<ClientTypeWs, ClientTypeHttp>,
+    params: &Parameters<ClientTypeWs>,
     min_borrow_part: U256,
 ) -> anyhow::Result<()> {
     let one_e_13 = U256::from(10000000000000_u64);
@@ -403,7 +369,7 @@ async fn check_liquidations(
 async fn liquidate(
     accounts: Vec<Address>,
     borrow_parts: Vec<U256>,
-    params: &Parameters<ClientTypeWs, ClientTypeHttp>,
+    params: &Parameters<ClientTypeWs>,
     total_borrow: Rebase,
     total_token: Rebase,
     exchange_rate: U256,
@@ -462,7 +428,7 @@ async fn liquidate(
             selected_adjusted_borrow_parts
         );
 
-        let tx_call = params.cauldron_send.liquidate(
+        let tx_call = params.cauldron.liquidate(
             selected_accounts,
             selected_adjusted_borrow_parts,
             params.swapper_address,
@@ -520,11 +486,10 @@ async fn main() -> anyhow::Result<()> {
         parse_units(env::var("MIN_BORROW_PART").expect("MIN_BORROW_PART not found"), "ether")
             .unwrap();
 
-    let clients = create_clients().await.unwrap();
-    let client = clients.0;
-    let client_send = clients.1;
+    let client_config = get_client_config().unwrap();
+    let client = create_client(&client_config).await.unwrap();
 
-    let mut params = initialize(&client, &client_send).await.unwrap();
+    let mut params = initialize(&client).await.unwrap();
 
     let client1 = client.clone();
     let client2 = client.clone();

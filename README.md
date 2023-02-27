@@ -13,7 +13,7 @@ This is an immature software, only use with wallet with smaller ETH amount.
 make build-release
 ```
 
-- create `.env` from `.env.example` and fill the necessary endpoints. `RPC_URL` is the current chain websocket rpc and `RPC_URL_SEND` is the http rpc endpoint to send the transaction.
+- create `.env` from `.env.example` and fill the necessary endpoints. `RPC_URL` is the current chain websocket rpc.
 - `launch_one.sh` and `launch_all.sh` contains examples how to run the bot, modify and adapt at will.
 - each bot process are isolated instance and corresponding to one cauldron listener and liquidator using it's own parameters.
 - full archives nodes needs to be used to properly work
