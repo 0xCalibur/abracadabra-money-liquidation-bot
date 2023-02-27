@@ -5,6 +5,7 @@ fn main() {
     println!("cargo:rerun-if-changed=./abi/*.json");
     bindgen("BentoBoxV1");
     bindgen("CauldronV2");
+    bindgen("CauldronV4");
     bindgen("CauldronLiquidator");
     bindgen("ERC20");
 }
