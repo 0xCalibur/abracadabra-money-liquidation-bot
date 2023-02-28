@@ -3,6 +3,14 @@ name = "abra_liquidator"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "abra_liquidator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "abra_liquidator"
+path = "src/bin/liquidator.rs"
+
 [dependencies]
 anyhow = "1.0.62"
 ethers = { git = "https://github.com/gakonst/ethers-rs", features = ["ws"] }
