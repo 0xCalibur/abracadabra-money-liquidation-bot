@@ -93,10 +93,12 @@ async fn stream_borrows(
 
 struct ClientConfig {
     rpc: String,
-    private_key: String
+    private_key: String,
 }
 
-async fn create_client(client_config: &ClientConfig) -> anyhow::Result<Arc<ClientTypeWs>, anyhow::Error> {
+async fn create_client(
+    client_config: &ClientConfig,
+) -> anyhow::Result<Arc<ClientTypeWs>, anyhow::Error> {
     let ClientConfig { rpc, private_key } = client_config;
     let provider = Provider::new(Ws::connect(rpc).await?);
     let chain_id = provider.get_chainid().await?;
@@ -121,20 +123,20 @@ async fn create_client(client_config: &ClientConfig) -> anyhow::Result<Arc<Clien
     return Ok(client)
 }
 
-fn get_client_config() -> anyhow::Result<ClientConfig>
-{
+fn get_client_config() -> anyhow::Result<ClientConfig> {
     let use_anvil = env::var("USE_ANVIL").unwrap_or_default();
 
     let client_config = if use_anvil == "1" {
         loggy::info!(">> Using Anvil");
         ClientConfig {
             rpc: "ws://127.0.0.1:8545".to_string(),
-            private_key: env::var("LOCAL_PRIVATE_KEY").or(Err(anyhow!("LOCAL_PRIVATE_KEY not found")))?
+            private_key: env::var("LOCAL_PRIVATE_KEY")
+                .or(Err(anyhow!("LOCAL_PRIVATE_KEY not found")))?,
         }
     } else {
         ClientConfig {
             rpc: env::var("RPC_URL").or(Err(anyhow!("RPC_URL not found")))?,
-            private_key: env::var("PRIVATE_KEY").or(Err(anyhow!("PRIVATE_KEY not found")))?
+            private_key: env::var("PRIVATE_KEY").or(Err(anyhow!("PRIVATE_KEY not found")))?,
         }
     };
 
@@ -500,7 +502,8 @@ async fn main() -> anyhow::Result<()> {
     let sender = params.bentobox.client().default_sender().unwrap();
     let master_contract = params.cauldron.master_contract().call().await?;
 
-    // TODO: Don't approve it and use set approval signature inside cook() for newer cauldronv4 contracts.
+    // TODO: Don't approve it and use set approval signature inside cook() for newer cauldronv4
+    // contracts.
     if !params.bentobox.master_contract_approved(master_contract, sender).call().await? {
         loggy::info!("Approving Master Contract...");
         params

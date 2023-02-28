@@ -1,13 +1,20 @@
 {
   "editor.formatOnSave": true,
   "editor.formatOnType": true,
-  "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
+  "rust-analyzer.rustfmt.extraArgs": [
+    "+nightly"
+  ],
   "[rust]": {
-    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
   },
   "solidity.compileUsingRemoteVersion": "v0.8.15",
   "solidity.defaultCompiler": "remote",
   "solidity.formatter": "prettier",
-  "search.exclude": { "lib": true },
-  "git.ignoredRepositories": ["lib/abracadabra-money-foundry"]
+  "search.exclude": {
+    "lib": true
+  },
+  "git.ignoredRepositories": [
+    "lib/abracadabra-money-foundry"
+  ]
 }
