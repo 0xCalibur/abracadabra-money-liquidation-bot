@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use ethers::{
     abi::Address,
-    providers::{Middleware, StreamExt},
+    providers::{Middleware, StreamExt, PubsubClient},
     types::{BlockNumber, U64},
 };
 use tokio::sync::mpsc;
 
-use crate::{bindings::cauldronv2::CauldronV2, session::ClientTypeWs};
+use crate::bindings::cauldronv2::CauldronV2;
 
 #[derive(Debug)]
 pub enum Event {
@@ -16,10 +16,15 @@ pub enum Event {
     NewBlock { block_no: U64 },
 }
 
-pub async fn stream_blocks(
+pub async fn stream_blocks<M>(
     sender: mpsc::Sender<Event>,
-    client: Arc<ClientTypeWs>,
-) -> anyhow::Result<()> {
+    client: Arc<M>,
+) -> anyhow::Result<()>
+where
+    M: Middleware,
+    M::Provider: PubsubClient,
+    M::Error: 'static
+{
     let mut stream = client.subscribe_blocks().await?;
 
     while let Some(block) = stream.next().await {
@@ -29,14 +34,16 @@ pub async fn stream_blocks(
     Ok(())
 }
 
-pub async fn stream_borrows(
+pub async fn stream_borrows<M>(
     sender: mpsc::Sender<Event>,
-    client: Arc<ClientTypeWs>,
-    caudron_address: Address,
-) -> anyhow::Result<()> {
-    let last_block = client.get_block(BlockNumber::Latest).await?.unwrap().number.unwrap();
+    cauldron: CauldronV2<M>
+) -> anyhow::Result<()>
+where
+    M: Middleware + 'static,
+    M::Provider: PubsubClient,
+{
+    let last_block = cauldron.client().get_block(BlockNumber::Latest).await?.unwrap().number.unwrap();
 
-    let cauldron = CauldronV2::new(caudron_address, client);
     let borrow_filter = cauldron.log_borrow_filter().from_block(last_block);
 
     let mut log_borrow_stream = borrow_filter.stream().await?;

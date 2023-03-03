@@ -20,9 +20,7 @@ use crate::bindings::{
     erc20::ERC20,
 };
 
-pub type ClientTypeWs = NonceManagerMiddleware<
-    SignerMiddleware<GasEscalatorMiddleware<Provider<Ws>, GeometricGasPrice>, Wallet<SigningKey>>,
->;
+pub type ClientTypeWs = GasEscalatorMiddleware<Arc<NonceManagerMiddleware<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>>, GeometricGasPrice>;
 
 #[derive(Debug, Clone)]
 pub struct Parameters<M> {
@@ -67,7 +65,7 @@ pub fn get_client_config() -> anyhow::Result<ClientConfig> {
 
 pub async fn create_client(
     client_config: &ClientConfig,
-) -> anyhow::Result<Arc<ClientTypeWs>, anyhow::Error> {
+) -> anyhow::Result<Arc<ClientTypeWs>> {
     let ClientConfig { rpc, private_key } = client_config;
     let provider = Provider::new(Ws::connect(rpc).await?);
     let chain_id = provider.get_chainid().await?;
@@ -79,22 +77,27 @@ pub async fn create_client(
     let signer = private_key.parse::<LocalWallet>()?.with_chain_id(chain_id.as_u64());
     let address = signer.address();
 
-    // Escalate gas prices
-    let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
-    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
-
     let provider = SignerMiddleware::new(provider, signer);
 
     // Manage nonces locally
     let provider = NonceManagerMiddleware::new(provider, address);
-    let client = Arc::new(provider);
+    let provider = Arc::new(provider);
 
-    return Ok(client)
+    // Escalate gas prices
+    let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
+    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
+
+    let provider = Arc::new(provider);
+
+    return Ok(provider)
 }
 
-pub async fn initialize(
-    client: &Arc<ClientTypeWs>,
-) -> anyhow::Result<Parameters<ClientTypeWs>, anyhow::Error> {
+pub async fn initialize<M>(
+    client: &Arc<M>,
+) -> anyhow::Result<Parameters<M>>
+where
+    M: Middleware + 'static
+{
     let cauldron_liquidation_address = env::var("CAULDRON_LIQUIDATOR")
         .expect("CAULDRON_LIQUIDATOR not found")
         .parse::<Address>()

@@ -39,8 +39,6 @@ async fn main() -> anyhow::Result<()> {
 
     let mut params = initialize(&client).await.unwrap();
 
-    let client1 = client.clone();
-    let client2 = client.clone();
     let (sender1, mut rx) = mpsc::channel(32);
     let sender2 = sender1.clone();
     let sender3 = sender1.clone();
@@ -69,12 +67,13 @@ async fn main() -> anyhow::Result<()> {
 
     check_liquidations(sender1.clone(), &params, min_borrow_part).await?;
 
+    let cauldron = params.cauldron.clone();
     let t1 = tokio::spawn(async move {
-        stream_borrows(sender1, client1, params.cauldron_address).await.unwrap();
+        stream_borrows(sender1, cauldron).await.unwrap();
     });
 
     let t2 = tokio::spawn(async move {
-        stream_blocks(sender2, client2).await.unwrap();
+        stream_blocks(sender2, client).await.unwrap();
     });
 
     let event_handler = tokio::spawn(async move {
