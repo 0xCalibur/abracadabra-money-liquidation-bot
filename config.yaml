@@ -1,0 +1,63 @@
+services:
+  - ethereum_01: # Identfier for the service/network/provider/client
+      enabled: false # Network is enabled or disabled
+      rpc: 'ws://eth-mainnet.g.alchemy.com/v2/...' # WS rpc for network
+      cauldron_liquidator: '0x60f50a3a86fff86b727a9b46e17ac06360dc0192' # CauldronLiquidator address on netowrk
+      private_key: f8c734e0e7e08fae118dd12e01047de8cc02d0322ef8fe400a99d4f0d7e3ccc0 # Private key to be used for the network
+      profibility_engine: # Engine that should check for profibility
+        type: min_borrow_part_engine
+        config: # Config relevant for the specifc profibility engine type
+          min_borrow_part: '1000'
+      liqudiation_executor: # Executor that should execute liquidations
+        type: cauldronv4_executor
+        config: # Config relevant for the specifc liquidation executor type
+          bento_withdraw: true
+      cauldrons: # List of cauldrons
+        - shib: # Identfier for the cauldron
+            cauldron: '0x252dcf1b621cc53bc22c256255d2be5c8c32eae4'
+            swapper: '0x1085fa0770a88a132e3b8aae21c84755d70081ce'
+            cauldron_deploy_block: '13452048'
+          weth:
+            cauldron: '0x390db10e65b5ab920c19149c919d970ad9d18a41'
+            swapper: '0xfb81be4bde317d32ec6934db87e05cfdc5245437'
+            cauldron_deploy_block: '13852120'
+    ethereum_02:
+      rpc: 'https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'
+      cauldron_liquidator: '0x60f50a3a86fff86b727a9b46e17ac06360dc0192'
+      private_key: 2e8b898a796cbab7f173a611047fdcf50e833eaef8764af31196e2226adbe2fa
+      profibility_engine:
+        type: min_borrow_part_engine
+        config:
+          min_borrow_part: '1000'
+      liquidation_executor:
+        type: cauldronv2
+      cauldrons:
+        - xsushi:
+            enabled: false
+            cauldron: '0x98a84eff6e008c5ed0289655ccdca899bcb6b99f'
+            swapper: '0x1b34da94f48110b64b7a437e057ae3e794c625a2'
+            cauldron_deploy_block: '13082618'
+            profibility_engine:
+              type: min_borrow_part_engine
+              config:
+                min_borrow_part: '2000'
+          yvcrvib:
+            cauldron: '0xebfde87310dc22404d918058faa4d56dc4e93f0a'
+            swapper: '0x1945dc833570a040e28b6e02aac913726e363180'
+            cauldron_deploy_block: '12903352'
+    arbitrum_01:
+      enabled: true
+      rpc: 'ws://aeth-mainnet.g.alchemy.com/v2/...'
+      cauldron_liquidator: '0x170a76130727d2ae197c5f6ffad237ce7065d358'
+      private_key: f8c734e0e7e08fae118dd12e01047de8cc02d0322ef8fe400a99d4f0d7e3ccc0
+      profibility_engine:
+        type: min_borrow_part_engine
+        config:
+          min_borrow_part: '50'
+      liquidation_executor:
+        type: cauldronv2
+      cauldrons:
+        - weth:
+            cauldron: '0xc89958b03a55b5de2221acb25b58b89a000215e6'
+            swapper: '0x4c56dbcc056655b8813539af9c819ae128c07e17'
+            cauldron_deploy_block: '2010083'
